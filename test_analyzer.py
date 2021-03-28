@@ -1,4 +1,5 @@
-import task
+import analyzer
+import loader
 import unittest
 import os
 import json
@@ -20,23 +21,23 @@ class TestTaskOperations(unittest.TestCase):
         os.remove(self.filename)
     
     def testStoreAndIncrement(self):
-        task.storeAndIncrement(self.dom)
-        task.storeAndIncrement(self.dom)
+        loader.storeAndIncrement(self.dom)
+        loader.storeAndIncrement(self.dom)
         joinedStat = self.dom.getFriendlyJoinedStat(0, 1)
         self.assertEquals(1, len(joinedStat))
         self.assertEquals(4, len(joinedStat[0]))
 
     def testStoreData(self):
-        task.storeData(self.dom, 0)
-        task.storeData(self.dom, 1)
+        loader.storeData(self.dom, 0)
+        loader.storeData(self.dom, 1)
         joinedStat = self.dom.getFriendlyJoinedStat(0, 1)
         self.assertEquals(1, len(joinedStat))
         self.assertEquals(4, len(joinedStat[0]))
 
     def testDuplicateStores(self):
-        task.storeData(self.dom, 0)
-        task.storeData(self.dom, 1)
-        self.assertRaises(sqlite3.IntegrityError, task.storeData, self.dom, 1)
+        loader.storeData(self.dom, 0)
+        loader.storeData(self.dom, 1)
+        self.assertRaises(sqlite3.IntegrityError, loader.storeData, self.dom, 1)
 
     def testGetTotalForPeriod(self):
         stat1a = {'data':{'segments':[{'stats':{'metric':{'value':2}}}]}}
@@ -48,7 +49,7 @@ class TestTaskOperations(unittest.TestCase):
         self.dom.loadStat('usera',1, json.dumps(stat2a))
         self.dom.loadStat('userb',1, json.dumps(stat2b))
         joinedStat = self.dom.getFriendlyJoinedStat(0, 1)
-        periodTotal = task.analyzeStatForPeriod(joinedStat, 'metric')
+        periodTotal = analyzer.analyzeStatForPeriod(joinedStat, 'metric')
         
         self.assertEquals(5, periodTotal[2])
         self.assertEquals(4, periodTotal[1])
@@ -62,26 +63,26 @@ class TestTaskOperations(unittest.TestCase):
         self.dom.loadStat('usera',1, json.dumps(stat2a))
         self.dom.loadStat('userb',1, json.dumps(stat2b))
         joinedStat = self.dom.getFriendlyJoinedStat(0, 1)
-        periodTotal = task.analyzeStatForPeriod(joinedStat, 'metric')
+        periodTotal = analyzer.analyzeStatForPeriod(joinedStat, 'metric')
         self.assertEquals(1, periodTotal[2])
         self.assertEquals(1, periodTotal[1])
         self.assertEquals("usera", periodTotal[0])
 
     def testGetTotalForPeriodNoData(self):
         joinedStat = self.dom.getFriendlyJoinedStat(0, 1)
-        periodTotal = task.analyzeStatForPeriod(joinedStat, 'metric')
+        periodTotal = analyzer.analyzeStatForPeriod(joinedStat, 'metric')
         self.assertEquals(0, periodTotal[2])
         self.assertEquals(-1, periodTotal[1])
         self.assertEquals("nobody", periodTotal[0])
 
     def testCraftMessage(self):
-        task.storeAndIncrement(self.dom)
-        task.storeAndIncrement(self.dom)
-        print(task.craftMessage(self.dom, 0, 1))
+        loader.storeAndIncrement(self.dom)
+        loader.storeAndIncrement(self.dom)
+        print(analyzer.craftMessage(self.dom, 0, 1))
 
     def testRealMessage(self):
         realDom = SqlLiteDom("actual_db_copy")
-        report = task.craftLastMessage(realDom)
+        report = analyzer.craftLastMessage(realDom)
         print(report)
 
     def testRealGetJoinedStat(self):
@@ -97,8 +98,8 @@ class TestTaskOperations(unittest.TestCase):
         self.assertTrue(creatifStatLine != None)
         self.assertTrue(parizvalStatLine != None)
 
-        creatifKills = task.getStatDiffFromLine(creatifStatLine, "kills", "overview")
-        parizvalKills = task.getStatDiffFromLine(parizvalStatLine, "kills", "overview")
+        creatifKills = analyzer.getStatDiffFromLine(creatifStatLine, "kills", "overview")
+        parizvalKills = analyzer.getStatDiffFromLine(parizvalStatLine, "kills", "overview")
         self.assertEquals(68, creatifKills)
         self.assertEquals(172, parizvalKills)
         sqlTemplate = "SELECT * FROM stats where username='%s' and key = %s"
@@ -118,13 +119,13 @@ class TestTaskOperations(unittest.TestCase):
         self.assertEquals(prevPlatformId, newPlatformId)
     
     def trackUpdates(self):
-        query = task.queryBfTracker('Creatif_Craxy')
+        query = analyzer.queryBfTracker('Creatif_Craxy')
         intialKills = query['data']['segments'][0]['stats']['kills']['value']
         initialTime = query['data']['segments'][0]['stats']['timePlayed']['value']
         killTotal = intialKills
         timeTotal = initialTime
         for i in range(2000):
-            query = task.queryBfTracker('Creatif_Craxy')
+            query = analyzer.queryBfTracker('Creatif_Craxy')
             updatedKills = query['data']['segments'][0]['stats']['kills']['value']
             updatedTime = query['data']['segments'][0]['stats']['timePlayed']['value']
             killDiff = updatedKills - killTotal
@@ -134,8 +135,8 @@ class TestTaskOperations(unittest.TestCase):
             formattedCurTime = timezone('US/Pacific').localize(datetime.datetime.fromtimestamp(curTime)).astimezone(timezone('US/Pacific')).strftime("%m/%d/%Y, %H:%M:%S")
             formattedTimeDiff = datetime.timedelta(seconds = timeDiff)
             formattedTotalTimePlayed = datetime.timedelta(seconds = timeTotal)
-            lastGameMap = task.queryLastGame()['data']['reports'][0]['mapKey']
-            lastGameTimestamp = task.queryLastGame()['data']['reports'][0]['timestamp']
+            lastGameMap = analyzer.queryLastGame()['data']['reports'][0]['mapKey']
+            lastGameTimestamp = analyzer.queryLastGame()['data']['reports'][0]['timestamp']
             formattedLastGameTime = timezone('US/Pacific').localize(datetime.datetime.fromtimestamp(lastGameTimestamp)).astimezone(timezone('US/Pacific')).strftime("%m/%d/%Y, %H:%M:%S")
             printedStatement = """STATS FOR TIME: %s. KILL TOTAL: %s TIME TOTAL %s \nKIll DIFF: %s TIME DIFF: %s""" % (formattedCurTime, killTotal, formattedTotalTimePlayed, killDiff, formattedTimeDiff)            
             print(printedStatement)

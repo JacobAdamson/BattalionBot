@@ -3,8 +3,11 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 import env_variables
 from db import SqlLiteDom
-import task
+import loader
+import analyzer
 import datetime
+import bank
+import hr
 from pytz import timezone
 
 client = Bot(description="My Cool Bot", command_prefix="!", )
@@ -47,7 +50,7 @@ async def enlist(ctx, username):
             if user[0] == username:
                 await ctx.send('Username already exists in users. Are you sure you meant to enlist %s.' % username)
                 return
-        query = task.queryBfTracker(username)['data']
+        query = analyzer.queryBfTracker(username)['data']
         #if(query == None):
         #    await ctx.send('Unable to find user in battlefield tracker. Are you sure you meant to enlist %s' % username)
         dom.enlistUser(username)
@@ -56,6 +59,37 @@ async def enlist(ctx, username):
     except Exception as e:
         print(e)
         await ctx.send("Something went wrong while trying to enlist user %s." % username)
+
+
+### NEW TABLE OPERATIONS
+@client.command(pass_context=True)
+@commands.check(hasPermissions)
+async def conscript(ctx, *args):
+    if(len(args) != 2):
+        await ctx.send("Conscript requires two arguments. A tagged user and a platform user id.")
+    else:
+        userid = ctx.message.mentions[0].id
+        await ctx.send("Registering discord user with HR")
+        hr.conscript(dom, userid, "psn", args[1])
+
+@client.command(pass_context=True)
+@commands.check(isSysAdmin)
+async def initAccountingTables(ctx):
+    await ctx.send("Initializing...")
+    dom.createBankTables()
+    await ctx.send("Initialized Bank Tables")
+    dom.createGameAccountMappingTable()
+    await ctx.send("Initialized Game Account Mapping Tables")
+
+@client.command(pass_context=True)
+@commands.check(isSysAdmin)
+async def dropAccountingTables(ctx):
+    await ctx.send("Dropping...")
+    dom.dropBankTables()
+    await ctx.send("Dropped Bank Tables")
+    dom.dropMappingTable()
+    await ctx.send("Dropped Game Account Mapping Tables")
+
 
 @client.command(pass_context=True)
 @commands.check(hasPermissions)
@@ -69,7 +103,7 @@ async def discharge(ctx, username):
 @commands.check(hasPermissions)
 async def syncData(ctx):
     await ctx.send('syncing data for users in battalion')
-    task.storeAndIncrement(dom)
+    loader.storeAndIncrement(dom)
     await ctx.send(dom.getUsers())
 
 @client.command(pass_context=True)
@@ -94,15 +128,15 @@ async def getDupeCount(ctx):
 async def report(ctx, *args):
     if(len(args) == 0):     
         await ctx.send("Showing Frag Report Since Last Interval")
-        report = task.craftLastMessage(dom)
+        report = analyzer.craftLastMessage(dom)
     elif(len(args) == 1):
         since = int(args[0])
         await ctx.send("Showing Frag Report Over Last %s Intervals" % since)
-        report = task.craftMessageSince(dom, since)
+        report = analyzer.craftMessageSince(dom, since)
     elif(len(args) == 2):
         prev = int(args[0])
         cur = int(args[1])
-        report = task.craftMessage(dom, prev, cur)
+        report = analyzer.craftMessage(dom, prev, cur)
         await ctx.send("Showing Frag Report Between Intervals %s and %s" % (prev, cur))
     await ctx.send(report)
 
@@ -131,6 +165,65 @@ async def clearChannels(ctx):
     dom.clearChannels()
     channels = dom.getChannels()
     await ctx.send("Channels cleared, current channels %s" % channels)
+
+### BANKING COMMANDS
+@client.command(pass_context=True)
+async def transfer(ctx, *args):
+    if(len(args) != 2):
+        await ctx.send("transfer requires two arguments. A tagged user and an amount to transfer.")
+    else:
+        sender = ctx.message.author.id
+        reciever = ctx.message.mentions[0].id
+        amountToTransfer = int(args[1])
+        if(amountToTransfer < 1):
+            await ctx.send("transfer amount must be greater than or equal to 1")
+        else:
+            transferMessage = bank.transfer(dom, sender, reciever, amountToTransfer)
+            await ctx.send(transferMessage)
+
+@client.command(pass_context=True)
+async def balance(ctx, *args):
+    if(len(args) > 0):
+        accountToCheck = ctx.message.mentions[0].id
+    else: 
+        accountToCheck = ctx.message.author.id
+    balance = bank.balance(dom, accountToCheck)
+    await ctx.send(balance)
+
+@client.command(pass_context=True)
+@commands.check(hasPermissions)
+async def award(ctx, *args):
+    reciever = ctx.message.mentions[0].id
+    amountToAward = int(args[1])
+    returnedMessage = bank.award(dom, reciever, amountToAward)
+    await ctx.send(returnedMessage)
+    await ctx.send(f"Awarded {amountToAward} ugly tokens")
+
+@client.command(pass_context=True)
+async def accounts(ctx):
+    await ctx.send(dom.accounts())
+
+
+### HR COMMANDS ###
+@client.command(pass_context=True)
+@commands.check(hasPermissions)
+async def payout(ctx, *args):
+    if(len(args) == 0):     
+        await ctx.send("Paying Out Since Last Interval")
+        preformanceInfo = hr.processLastPerformance(dom)
+        report = hr.generateReports(preformanceInfo, client)
+    elif(len(args) == 1):
+        since = int(args[0])
+        await ctx.send("Paying Out Report Over Last %s Intervals" % since)
+        preformanceInfo = hr.processPerformanceSince(dom, since)
+        report = hr.generateReports(preformanceInfo, client)
+    elif(len(args) == 2):
+        await ctx.send("Paying Out Report Between Intervals %s and %s" % (prev, cur))
+        prev = int(args[0])
+        cur = int(args[1])
+        preformanceInfo = hr.processPerformance(dom, prev, cur)
+        report = hr.generateReports(preformanceInfo, client)
+    await ctx.send(report)
 
 ### SERVER COMMANDS ###
 @client.command(pass_context=True, name="setup-server")

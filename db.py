@@ -22,6 +22,24 @@ class SqlLiteDom:
         sql = """ DELETE FROM USERS
         WHERE username = '%s'""" % (psnUser)
         return self.performWrite(sql)
+
+    def userExists(self, username):
+        sql = f"SELECT * from users where username = '{username}'"
+        usersWithUsername = self.performQuery(sql)
+        return len(usersWithUsername) == 1
+
+    #### MAPPING OPERATIONS ####
+    def conscriptUser(self, username, platform, platformUsername):
+        sql = f"""INSERT INTO gameAccountMapping (username, platform, platformUsername) values ('{username}','{platform}','{platformUsername}')"""
+        return self.performWrite(sql)
+
+    def getAccountForPlatformUsername(self, platform, platformUsername):
+        sql = f"""SELECT username from gameAccountMapping where platform='{platform}' and platformUsername='{platformUsername}'"""
+        mapping = self.performQuery(sql)
+        if(len(mapping) != 1):
+            return None
+        else:
+            return mapping[0][0]
     
     #### STATS OPERATIONS ####
     def loadStat(self, username, key, stats):
@@ -108,6 +126,38 @@ class SqlLiteDom:
         self.performWrite(sql)
         return self.getKey()
 
+
+    #### BANK OPERATIONS #### #TODO: THROW EXCEPTION IF ACCOUNT DOES NOT EXIST
+    def getAccount(self, username):
+        sql = f"""SELECT * FROM accounts where username = '{username}'"""
+        return self.performQuery(sql)
+
+    def hasAccount(self, username):
+        account = self.getAccount(username)
+        return len(account) == 1
+
+    def balance(self, username):
+        account = self.getAccount(username)
+        return account[0][1]
+
+    def deltaBalance(self, username, amount):
+        curBalance = self.balance(username)
+        newBalance = curBalance + amount
+        sql = f"UPDATE accounts SET balance = {newBalance} where username='{username}'"
+        return (self.performWrite(sql))        
+
+    def transfer(self, sender, reciever, amount):
+        self.deltaBalance(sender, -amount)
+        self.deltaBalance(reciever, amount)
+    
+    def createAccount(self, username):
+        sql = f"INSERT INTO accounts values ('{username}', 0)"
+        return (self.performWrite(sql))    
+    
+    def accounts(self):
+        sql = "SELECT * FROM accounts"
+        return self.performQuery(sql)
+
     #### STANDARD OPERATIONS ####
     def performQuery(self, sql):
         conn = None
@@ -149,6 +199,49 @@ class SqlLiteDom:
                 key INTEGER PRIMARY KEY,
                 timestamp INTEGER
             )""")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def createBankTables(self):
+        conn = None
+        try:
+            conn = self.createConnection()
+            conn.cursor().execute("""CREATE TABLE accounts(
+                username TEXT,
+                balance INTEGER,
+                UNIQUE(username) ON CONFLICT FAIL)""")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def createGameAccountMappingTable(self):
+        conn = None
+        try:
+            conn = self.createConnection()
+            conn.cursor().execute("""CREATE TABLE gameAccountMapping(
+                username TEXT,
+                platform TEXT,
+                platformUsername TEXT,
+                UNIQUE(platformUsername, platform) ON CONFLICT FAIL)""")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def dropBankTables(self):
+        conn = None
+        try:
+            conn = self.createConnection()
+            conn.cursor().execute("""DROP TABLE accounts""")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def dropMappingTable(self):
+        conn = None
+        try:
+            conn = self.createConnection()
+            conn.cursor().execute("""DROP TABLE gameAccountMapping""")
             conn.commit()
         finally:
             conn.close()

@@ -1,5 +1,6 @@
 import time
-import task
+import analyzer
+import loader
 import discord
 from db import SqlLiteDom
 import asyncio
@@ -12,9 +13,9 @@ client = discord.Client()
 async def on_ready():
     try:
         dom = SqlLiteDom(env_variables.dbFilename())
-        task.storeAndIncrement(dom)
+        loader.storeAndIncrement(dom)
         channelIds = dom.getChannels()
-        message = task.craftMessageSince(dom, 1)
+        message = analyzer.craftMessageSince(dom, 1)
         for channelId in channelIds:
             await client.get_channel(channelId[0]).send(message)
     finally:
