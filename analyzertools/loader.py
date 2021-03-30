@@ -1,3 +1,5 @@
+from json.decoder import JSONDecodeError
+
 import requests
 import json
 
@@ -19,8 +21,12 @@ def createLiveStat(dom):
     users = dom.getUsers()
     liveStat = []
     for user in users:
-        data = queryBfTracker(user[0])
-        liveStat.append([user[0], json.dumps(data)])
+        try:
+            data = queryBfTracker(user[0])
+            liveStat.append([user[0], json.dumps(data)])
+        except JSONDecodeError as err:
+            print("Encountered Exception While Querying Battlefield Tracker")
+            print(err)
     return liveStat
 
 def queryBfTracker(username): 

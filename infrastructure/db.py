@@ -1,5 +1,4 @@
 import sqlite3
-from sqlite3 import Error
 import time
 
 class SqlLiteDom:
@@ -11,22 +10,45 @@ class SqlLiteDom:
         sql = "SELECT * FROM USERS"
         return self.performQuery(sql)
 
-    def enlistUser(self, psnUser):
+    def enlistUser(self, battalion, psnUser):
         #validate battalion exists
-        sql = """INSERT INTO USERS (username)
-        VALUES ('%s')""" % (psnUser)
+        sql = """INSERT INTO USERS (battalion, username)
+        VALUES ('%s', '%s')""" % (battalion, psnUser)
         return self.performWrite(sql)
 
-    def dischargeUser(self, psnUser):
+    def dischargeUser(self, battalion, psnUser):
         #check user status
         sql = """ DELETE FROM USERS
-        WHERE username = '%s'""" % (psnUser)
+        WHERE username = '%s'""" % (battalion, psnUser)
         return self.performWrite(sql)
 
     def userExists(self, username):
         sql = f"SELECT * from users where username = '{username}'"
         usersWithUsername = self.performQuery(sql)
         return len(usersWithUsername) == 1
+
+    #### BATTALION OPERATIONS ####
+    def createBattalion(self, name):
+       sql = "INSERT INTO BATTALIONS values ('%s') " % (name)
+       return self.performWrite(sql)
+
+    def getBattalions(self):
+       sql = "SELECT * FROM BATTALIONS"
+       return self.performQuery(sql)
+
+    def getUserBattalions(self, user):
+        sql = "SELECT * FROM BATTALIONS WHERE username = '%s'" % user
+        return self.performQuery(sql)
+
+    def setUserPermissionOnBattalion(self, discordUser, battalion, permission):
+        sql = """INSERT INTO BATTALION_PERMISSIONS (username, battalion, permission)
+         values ('%s', '%s', '%s') """ % (discordUser, battalion, permission)
+        return self.performWrite(sql)
+
+    def getUserBattalionPermission(self, discordUser, battalion):
+        sql = """SELECT permission FROM BATTALION_PERMISSIONS
+         where username='%s' and battalion='%s'""" % (discordUser, battalion)
+        return self.performQuery(sql)
 
     #### MAPPING OPERATIONS ####
     def conscriptUser(self, username, platform, platformUsername):
@@ -73,16 +95,6 @@ class SqlLiteDom:
                     AND statsPrev.username = statsCur.username"""
 
         return self.performQuery(totalCountSql)[0][0] - self.performQuery(joinCountSql)[0][0]
-
-    #### BATTALION OPERATIONS ####
-    #def createBattalion(self, name, guildId, channelId):
-    #    sql = sql = "INSERT INTO BATTALIONS values ('%s', '%s', '%s') " % (name, guildId, channelId)
-    #    return self.performWrite(sql)
-
-    #def getBattalions(self):asdas
-    #    sql = "SELECT * FROM BATTALIONS"
-    #    return self.performQuery(sql)
-
 
     #### CHANNEL OPERATIONS ####
     def getChannels(self):
@@ -199,6 +211,22 @@ class SqlLiteDom:
                 key INTEGER PRIMARY KEY,
                 timestamp INTEGER
             )""")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def createBattalionTables(self):
+        conn = None
+        try:
+            conn = self.createConnection()
+            conn.cursor().execute("""CREATE TABLE BATTALION_PERMISSIONS(
+                                        username STRING,
+                                        battalion INTEGER,
+                                        permission INTEGER
+                                    )""")
+            conn.cursor().execute("""CREATE TABLE BATTALIONS(
+                                                    battalion STRING
+                                                )""")
             conn.commit()
         finally:
             conn.close()

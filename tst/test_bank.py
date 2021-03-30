@@ -1,8 +1,7 @@
 import unittest
-import bank
+from economy import bank
 import os
-import json
-from db import SqlLiteDom
+from infrastructure.db import SqlLiteDom
 
 class TestBank(unittest.TestCase):
     def setUp(self):

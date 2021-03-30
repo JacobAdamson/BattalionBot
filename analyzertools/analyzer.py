@@ -1,12 +1,6 @@
-import os
-import requests
-import json
-
-from typing import List
-from analyzer_models import *
-from db import SqlLiteDom
+from .analyzer_models import *
 from texttable import Texttable
-from loader import *
+from .loader import *
 import datetime
 from pytz import timezone
 

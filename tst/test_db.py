@@ -1,4 +1,4 @@
-from db import SqlLiteDom
+from infrastructure.db import SqlLiteDom
 import unittest
 import os
 import json
@@ -175,6 +175,16 @@ class TestDomOperations(unittest.TestCase):
         self.dom.createGameAccountMappingTable()
         accountMapping = self.dom.getAccountForPlatformUsername("psn", "creatif_craxy")
         self.assertEquals(None, accountMapping)
+
+    def testBattalionOperations(self):
+        self.dom.createBattalionTables()
+        self.dom.createBattalion("UGLY")
+        battalions = self.dom.getBattalions()
+        self.assertEquals(battalions[0][0], "UGLY")
+        self.dom.setUserPermissionOnBattalion("jacob", "UGLY", "ADMIN")
+        permissions = self.dom.getUserBattalionPermission("jacob", "COMMANDER")
+        self.assertEquals(permissions[0][0], "COMMANDER")
+
 
 if __name__ == '__main__':
     unittest.main()

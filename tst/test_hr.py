@@ -1,8 +1,8 @@
 import unittest
-import hr
+from economy import hr
 import os
 import json
-from db import SqlLiteDom
+from infrastructure.db import SqlLiteDom
 
 class TestHr(unittest.TestCase):
     def setUp(self):

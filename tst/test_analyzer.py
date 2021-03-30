@@ -1,9 +1,8 @@
-import analyzer
-import loader
+from analyzertools import analyzer, loader
 import unittest
 import os
 import json
-from db import SqlLiteDom
+from infrastructure.db import SqlLiteDom
 import sqlite3 
 import time
 import datetime
@@ -81,17 +80,17 @@ class TestTaskOperations(unittest.TestCase):
         print(analyzer.craftMessage(self.dom, 0, 1))
 
     def testRealMessage(self):
-        realDom = SqlLiteDom("actual_db_copy")
+        realDom = SqlLiteDom("../infrastructure/actual_db_copy")
         report = analyzer.craftLastMessage(realDom)
         print(report)
 
     def testCreateLiveLeaderboard(self):
-        realDom = SqlLiteDom("actual_db_copy")
+        realDom = SqlLiteDom("../infrastructure/actual_db_copy")
         leaderboard = analyzer.createLiveLeaderboard(realDom, "kills/timePlayed pilot.kills/kills ground.kills/ground.timePlayed", 100)
         print(leaderboard)
 
     def testRealGetJoinedStat(self):
-        realDom = SqlLiteDom("actual_db_copy")
+        realDom = SqlLiteDom("../infrastructure/actual_db_copy")
         joinedStat = realDom.getJoinedStat(1, 2)
         creatifStatLine = None
         parizvalStatLine = None

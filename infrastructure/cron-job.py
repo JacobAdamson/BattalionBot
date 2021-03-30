@@ -1,10 +1,6 @@
-import time
-import analyzer
-import loader
+from analyzertools import analyzer, loader
 import discord
 from db import SqlLiteDom
-import asyncio
-import os
 import env_variables
 
 

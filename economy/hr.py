@@ -1,6 +1,5 @@
-import loader
-import analyzer
-import bank
+from analyzertools import analyzer
+from economy import bank
 
 
 def processLastPerformance(dom):
@@ -20,7 +19,7 @@ def processPerformance(dom, startKey, endKey):
 
 
 def generateReports(payInfoRows, client):
-    # analyzer.sortAndFilter(payInfoRows, 0, -1, False)
+    # analyzertools.sortAndFilter(payInfoRows, 0, -1, False)
     presentationInfoRows = []
     for row in payInfoRows:
         accountName = "acc:"
